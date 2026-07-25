@@ -1,0 +1,964 @@
+```html
+<!DOCTYPE html>
+<html lang="pt" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexFinance - Gestão & Precificação Estratégica</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- FontAwesome para ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Plus Jakarta Sans -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDKs (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 h-full flex flex-col selection:bg-indigo-500 selection:text-white pb-24">
+
+    <!-- Cabeçalho Estilo Banco -->
+    <header class="bg-slate-900/90 backdrop-blur-md border-b border-slate-800/80 sticky top-0 z-30 px-4 py-3.5">
+        <div class="max-w-md mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center font-bold text-white text-sm shadow-md shadow-indigo-500/20">
+                    NF
+                </div>
+                <div>
+                    <div class="flex items-center space-x-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Conectado ao Firebase"></span>
+                        <h1 class="text-xs font-medium text-slate-400">NexFinance Pro</h1>
+                    </div>
+                    <div class="flex items-center space-x-2 mt-0.5">
+                        <input type="month" id="mesReferencia" onchange="app.mudarMesReferencia(this.value)" 
+                            class="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-2">
+                <!-- Botão Ocultar Valores -->
+                <button onclick="app.togglePrivacidade()" class="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition cursor-pointer" title="Ocultar/Exibir valores">
+                    <i id="iconeOlho" class="fa-solid fa-eye text-xs"></i>
+                </button>
+                <!-- Botão Limpar -->
+                <button onclick="app.limparTudo()" class="w-9 h-9 rounded-full bg-slate-800 hover:bg-rose-500/20 hover:text-rose-400 text-slate-300 flex items-center justify-center transition cursor-pointer" title="Limpar dados avulsos do mês">
+                    <i class="fa-solid fa-trash-can text-xs"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Área de Conteúdo Dinâmico por Abas -->
+    <main class="flex-1 max-w-md w-full mx-auto px-4 py-5 space-y-5 overflow-y-auto">
+
+        <!-- ABA 1: RESUMO & SAÚDE FINANCEIRA -->
+        <div id="tab-resumo" class="space-y-5 tab-content">
+            
+            <!-- Cartão Principal de Saldo / Faturamento -->
+            <div class="bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-900 border border-indigo-500/30 rounded-3xl p-5 shadow-2xl relative overflow-hidden space-y-4">
+                <div class="absolute -right-10 -top-10 w-40 h-40 bg-indigo-600/10 rounded-full blur-2xl pointer-events-none"></div>
+                
+                <div class="flex justify-between items-start">
+                    <div>
+                        <span class="text-xs font-semibold text-indigo-300 uppercase tracking-wider">Lucro Líquido Real do Mês</span>
+                        <h2 id="saldoLiquido" class="text-3xl font-black text-white mt-1 tracking-tight valor-ocultavel">R$ 0,00</h2>
+                    </div>
+                    <div class="w-10 h-10 rounded-2xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center border border-indigo-500/30">
+                        <i class="fa-solid fa-chart-line"></i>
+                    </div>
+                </div>
+
+                <!-- Input Faturamento Consolidado -->
+                <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-3 flex items-center justify-between">
+                    <div>
+                        <p class="text-[10px] uppercase font-bold text-slate-400">Total Entradas Registadas (R$)</p>
+                        <p id="faturamentoTotalResumo" class="text-sm font-bold text-emerald-400 mt-0.5 valor-ocultavel">R$ 0,00</p>
+                    </div>
+                    <button onclick="app.mudarTab('entradas')" class="text-xs bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 px-3 py-1.5 rounded-xl border border-indigo-500/30 transition font-semibold cursor-pointer">
+                        Ver Entradas
+                    </button>
+                </div>
+            </div>
+
+            <!-- Cards Resumo Casa & Empresa -->
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-slate-900 border border-slate-800/80 rounded-2xl p-4 space-y-2">
+                    <div class="flex justify-between items-center text-slate-400">
+                        <span class="text-xs font-semibold uppercase">Custos Casa</span>
+                        <div class="w-7 h-7 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xs">
+                            <i class="fa-solid fa-house"></i>
+                        </div>
+                    </div>
+                    <h3 id="totalCasa" class="text-lg font-bold text-emerald-400 valor-ocultavel">R$ 0,00</h3>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800/80 rounded-2xl p-4 space-y-2">
+                    <div class="flex justify-between items-center text-slate-400">
+                        <span class="text-xs font-semibold uppercase">Custos Empresa</span>
+                        <div class="w-7 h-7 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center text-xs">
+                            <i class="fa-solid fa-building"></i>
+                        </div>
+                    </div>
+                    <h3 id="totalEmpresa" class="text-lg font-bold text-blue-400 valor-ocultavel">R$ 0,00</h3>
+                </div>
+            </div>
+
+            <!-- Card de Custo Diário baseado nos Dias Restantes -->
+            <div class="bg-gradient-to-r from-slate-900 to-indigo-950/60 border border-indigo-500/20 rounded-3xl p-5 space-y-3">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xs font-bold text-indigo-300 uppercase tracking-wider">Custo Diário (Base: Dias Restantes)</h3>
+                    <i class="fa-solid fa-calendar-day text-indigo-400 text-sm"></i>
+                </div>
+                <div class="grid grid-cols-2 gap-4 pt-1">
+                    <div>
+                        <p class="text-[10px] text-slate-400 uppercase font-semibold">Necessário / Dia Restante</p>
+                        <p id="custoPorDia" class="text-lg font-black text-white mt-0.5 valor-ocultavel">R$ 0,00</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-slate-400 uppercase font-semibold">Dias Úteis Restantes</p>
+                        <p id="diasRestantesCount" class="text-lg font-black text-indigo-300 mt-0.5">0 dias</p>
+                    </div>
+                </div>
+                <p class="text-[10px] text-slate-400 italic pt-1">💡 Calculado dividindo o saldo pendente de contas apenas pelos dias úteis que ainda faltam no mês.</p>
+            </div>
+
+            <!-- Gráfico Visual de Subcategorias -->
+            <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-5 space-y-4">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Gastos por Subcategoria</h3>
+                    <span class="text-[10px] text-slate-500 font-semibold">Este Mês</span>
+                </div>
+                
+                <div id="containerSubcategorias" class="space-y-3">
+                    <!-- Preenchido dinamicamente via JS -->
+                </div>
+
+                <div id="vazioSubcategorias" class="hidden py-6 text-center text-xs text-slate-500">
+                    Nenhuma subcategoria registada no mês.
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ABA 2: SIMULADOR DE PRECIFICAÇÃO DE ORÇAMENTOS -->
+        <div id="tab-precificacao" class="space-y-5 tab-content hidden">
+            
+            <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-5 space-y-4">
+                <div class="flex items-center space-x-3 border-b border-slate-800 pb-3">
+                    <div class="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-file-invoice-dollar"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-sm font-bold text-white">Simulador de Preço de Venda</h2>
+                        <p class="text-[11px] text-slate-400">Multiplica a diária proporcionalmente aos dias do serviço</p>
+                    </div>
+                </div>
+
+                <div class="space-y-3.5">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Custo de Materiais (R$)</label>
+                        <input type="number" step="0.01" id="simMat" oninput="app.calcularOrcamento()" placeholder="0,00" 
+                            class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Dias de Trabalho no Serviço</label>
+                            <input type="number" step="0.5" id="simDias" oninput="app.calcularOrcamento()" placeholder="Ex: 1" 
+                                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Margem de Lucro (%)</label>
+                            <input type="number" id="simMargem" value="20" oninput="app.calcularOrcamento()" placeholder="20" 
+                                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resultado da Simulação -->
+                <div class="bg-slate-950 border border-indigo-500/30 rounded-2xl p-4 space-y-3 mt-2">
+                    <span class="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Resultado da Precificação Sugerida</span>
+                    
+                    <div class="grid grid-cols-2 gap-3 pt-1 border-t border-slate-800/80">
+                        <div>
+                            <p class="text-[10px] text-slate-400 uppercase">Mão de Obra (<span id="resDiasLabel">0</span> dias)</p>
+                            <p id="resMaoDeObra" class="text-sm font-bold text-white mt-0.5 valor-ocultavel">R$ 0,00</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-slate-400 uppercase">Lucro Líquido Embutido</p>
+                            <p id="resLucro" class="text-sm font-bold text-emerald-400 mt-0.5 valor-ocultavel">R$ 0,00</p>
+                        </div>
+                    </div>
+
+                    <div class="pt-2 border-t border-slate-800/80 flex justify-between items-center">
+                        <div>
+                            <span class="text-xs font-bold text-slate-300">Preço Final de Venda:</span>
+                            <p class="text-[10px] text-slate-400">Material + Diária proporcional + Lucro</p>
+                        </div>
+                        <h3 id="resPrecoFinal" class="text-2xl font-black text-indigo-400 valor-ocultavel">R$ 0,00</h3>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ABA 3: ENTRADAS / CAIXA -->
+        <div id="tab-entradas" class="space-y-4 tab-content hidden">
+            
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 class="text-sm font-bold text-white uppercase tracking-wider">Controlo de Entradas</h2>
+                    <p class="text-[11px] text-slate-400">Registe serviços ou ganhos fixos mensais</p>
+                </div>
+                <button onclick="app.abrirModalEntrada()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-md shadow-emerald-600/20 cursor-pointer flex items-center space-x-1.5">
+                    <i class="fa-solid fa-plus text-[10px]"></i> <span>Nova Entrada</span>
+                </button>
+            </div>
+
+            <!-- Lista de Entradas -->
+            <div id="listaEntradas" class="space-y-3">
+                <!-- Preenchido via JS -->
+            </div>
+
+            <!-- Estado Vazio Entradas -->
+            <div id="vazioEntradasState" class="hidden py-16 text-center space-y-2">
+                <div class="w-12 h-12 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-center mx-auto text-slate-500">
+                    <i class="fa-solid fa-wallet"></i>
+                </div>
+                <p class="text-xs font-semibold text-slate-400">Nenhuma entrada registada neste mês</p>
+            </div>
+
+        </div>
+
+        <!-- ABA 4: EXTRATO DE DESPESAS -->
+        <div id="tab-lancamentos" class="space-y-4 tab-content hidden">
+            
+            <div class="flex justify-between items-center">
+                <h2 class="text-sm font-bold text-white uppercase tracking-wider">Extrato de Despesas</h2>
+                <!-- Filtros -->
+                <div class="flex items-center space-x-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
+                    <button onclick="app.setFiltro('todos')" id="filtro-todos" class="text-[11px] px-3 py-1 rounded-lg font-semibold bg-indigo-600 text-white transition cursor-pointer">Todas</button>
+                    <button onclick="app.setFiltro('Casa')" id="filtro-Casa" class="text-[11px] px-3 py-1 rounded-lg font-semibold text-slate-400 hover:text-white transition cursor-pointer">Casa</button>
+                    <button onclick="app.setFiltro('Empresa')" id="filtro-Empresa" class="text-[11px] px-3 py-1 rounded-lg font-semibold text-slate-400 hover:text-white transition cursor-pointer">Empresa</button>
+                </div>
+            </div>
+
+            <!-- Lista de Despesas -->
+            <div id="listaDespesas" class="space-y-3">
+                <!-- Preenchido via JS -->
+            </div>
+
+            <!-- Estado Vazio Despesas -->
+            <div id="vazioState" class="hidden py-16 text-center space-y-2">
+                <div class="w-12 h-12 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-center mx-auto text-slate-500">
+                    <i class="fa-solid fa-receipt"></i>
+                </div>
+                <p class="text-xs font-semibold text-slate-400">Nenhuma despesa registada</p>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Botão de Adição Rápida Flutuante -->
+    <div class="fixed bottom-20 right-5 z-40">
+        <button onclick="app.abrirModalForm()" class="bg-gradient-to-tr from-indigo-600 to-violet-600 text-white w-14 h-14 rounded-2xl shadow-xl shadow-indigo-600/40 flex items-center justify-center text-xl transition transform hover:scale-105 active:scale-95 cursor-pointer border border-indigo-400/30" title="Nova Despesa">
+            <i class="fa-solid fa-plus"></i>
+        </button>
+    </div>
+
+    <!-- Navegação Inferior (Tab Bar) -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-md border-t border-slate-800/80 z-30 px-4 py-2">
+        <div class="max-w-md mx-auto flex justify-around items-center">
+            <button onclick="app.mudarTab('resumo')" id="nav-resumo" class="flex flex-col items-center py-1 text-indigo-400 transition cursor-pointer">
+                <i class="fa-solid fa-chart-pie text-base"></i>
+                <span class="text-[10px] font-semibold mt-1">Resumo</span>
+            </button>
+            <button onclick="app.mudarTab('precificacao')" id="nav-precificacao" class="flex flex-col items-center py-1 text-slate-500 hover:text-slate-300 transition cursor-pointer">
+                <i class="fa-solid fa-calculator text-base"></i>
+                <span class="text-[10px] font-semibold mt-1">Simulador</span>
+            </button>
+            <button onclick="app.mudarTab('entradas')" id="nav-entradas" class="flex flex-col items-center py-1 text-slate-500 hover:text-slate-300 transition cursor-pointer">
+                <i class="fa-solid fa-wallet text-base"></i>
+                <span class="text-[10px] font-semibold mt-1">Entradas</span>
+            </button>
+            <button onclick="app.mudarTab('lancamentos')" id="nav-lancamentos" class="flex flex-col items-center py-1 text-slate-500 hover:text-slate-300 transition cursor-pointer">
+                <i class="fa-solid fa-list-check text-base"></i>
+                <span class="text-[10px] font-semibold mt-1">Extrato</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Modal de Formulário de Despesa -->
+    <div id="modalForm" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-end sm:items-center sm:justify-center p-0 sm:p-4 z-50">
+        <div class="bg-slate-900 border-t sm:border border-slate-800 rounded-t-3xl sm:rounded-3xl p-6 w-full sm:max-w-md shadow-2xl space-y-5">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 id="formTitle" class="font-bold text-white text-base flex items-center">
+                    <i class="fa-solid fa-circle-plus text-indigo-500 mr-2"></i> Nova Despesa
+                </h3>
+                <button onclick="app.fecharModalForm()" class="w-8 h-8 rounded-xl bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition cursor-pointer">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="expenseForm" onsubmit="app.salvarDespesa(event)" class="space-y-4">
+                <input type="hidden" id="expenseId">
+                
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Nome da Despesa</label>
+                    <input type="text" id="nome" required placeholder="Ex: MetaloAço, Aluguer, Luz" 
+                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Valor (R$)</label>
+                    <input type="number" step="0.01" id="valor" required placeholder="0,00" 
+                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Data</label>
+                    <input type="date" id="data" required 
+                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Categoria</label>
+                        <select id="categoria" required 
+                            class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                            <option value="Casa">Casa</option>
+                            <option value="Empresa">Empresa</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Subcategoria (Tag)</label>
+                        <input type="text" id="subcategoria" placeholder="Ex: Matéria-Prima" 
+                            class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                    </div>
+                </div>
+
+                <!-- Checkbox de Despesa Fixa -->
+                <div class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 flex items-center justify-between">
+                    <div>
+                        <span class="block text-xs font-bold text-white">Despesa Fixa</span>
+                        <span class="block text-[10px] text-slate-400">Repetir automaticamente em todos os meses</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="recorrente" class="sr-only peer">
+                        <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                    </label>
+                </div>
+
+                <div class="flex items-center space-x-2 pt-2">
+                    <button type="button" onclick="app.fecharModalForm()" 
+                        class="flex-1 py-3 rounded-xl text-sm font-semibold text-slate-400 hover:bg-slate-800 transition cursor-pointer">
+                        Cancelar
+                    </button>
+                    <button type="submit" id="btnSalvar" 
+                        class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-xl text-sm transition shadow-lg shadow-indigo-600/30 cursor-pointer">
+                        Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Entrada -->
+    <div id="modalEntrada" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 id="entradaModalTitle" class="font-bold text-white text-base flex items-center">
+                    <i class="fa-solid fa-circle-plus text-emerald-500 mr-2"></i> Registar Entrada / Ganho Fixo
+                </h3>
+                <button onclick="app.fecharModalEntrada()" class="w-8 h-8 rounded-xl bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition cursor-pointer">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form id="entradaForm" onsubmit="app.salvarEntrada(event)" class="space-y-4">
+                <input type="hidden" id="entradaId">
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Nome / Descrição do Ganho</label>
+                    <input type="text" id="entNome" required placeholder="Ex: Pró-labore / Contrato Fixo" 
+                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Valor Recebido (R$)</label>
+                    <input type="number" step="0.01" id="entValor" required placeholder="0,00" 
+                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Data de Recebimento</label>
+                    <input type="date" id="entData" required 
+                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
+                </div>
+
+                <!-- Associar a um Custo Específico -->
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Vincular a Custo Específico (Opcional)</label>
+                    <select id="entDespesaId" 
+                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
+                        <option value="">Nenhum (Entrada Livre no Caixa)</option>
+                        <!-- Preenchido via JS com as despesas cadastradas -->
+                    </select>
+                </div>
+
+                <!-- Checkbox de Entrada Recorrente / Fixa -->
+                <div class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 flex items-center justify-between">
+                    <div>
+                        <span class="block text-xs font-bold text-white">Ganho Fixo Mensal</span>
+                        <span class="block text-[10px] text-slate-400">Repetir automaticamente em todos os meses</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="entRecorrente" class="sr-only peer">
+                        <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                    </label>
+                </div>
+
+                <button type="submit" id="btnSalvarEntrada" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl text-sm transition shadow-lg shadow-emerald-600/30 cursor-pointer">
+                    Salvar Entrada
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Alertas -->
+    <div id="modalAlerta" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-xs w-full shadow-2xl text-center space-y-4">
+            <div id="modalIcon" class="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center text-xl"></div>
+            <h3 id="modalTitle" class="font-bold text-white text-sm"></h3>
+            <p id="modalMsg" class="text-xs text-slate-400"></p>
+            <button onclick="app.fecharModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-white py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer">Entendido</button>
+        </div>
+    </div>
+
+    <!-- Script de Gestão com Ganhos Fixos, Edição de Entradas, Associação de Custos e Simulador -->
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBI7Zecb-2tn3zUAAhiO5UmtTGcAALUiKg",
+            authDomain: "vitrine-913c6.firebaseapp.com",
+            projectId: "vitrine-913c6",
+            storageBucket: "vitrine-913c6.firebasestorage.app",
+            messagingSenderId: "1088927815489",
+            appId: "1:1088927815489:web:61d745609fbf4c8b9e73c0"
+        };
+        
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        
+        const db = firebase.firestore();
+        firebase.auth().signInAnonymously().catch(err => console.error("Erro auth:", err));
+
+        const CODESPESAS = "nexfinance_despesas";
+        const CODENTRADAS = "nexfinance_entradas";
+
+        class FinanceApp {
+            constructor() {
+                this.despesas = [];
+                this.entradas = [];
+                this.filtroAtual = 'todos';
+                this.tabAtiva = 'resumo';
+                this.privacidadeAtiva = false;
+                this.mesSelecionado = this.getMesAtualFormatado();
+                this.initFirebaseListeners();
+            }
+
+            getMesAtualFormatado() {
+                const hoje = new Date();
+                const ano = hoje.getFullYear();
+                const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+                return `${ano}-${mes}`;
+            }
+
+            initFirebaseListeners() {
+                document.getElementById('data').valueAsDate = new Date();
+                document.getElementById('entData').valueAsDate = new Date();
+                document.getElementById('mesReferencia').value = this.mesSelecionado;
+
+                // Despesas Listener
+                db.collection(CODESPESAS).onSnapshot((snapshot) => {
+                    this.despesas = [];
+                    snapshot.forEach((doc) => {
+                        this.despesas.push({ firebaseId: doc.id, ...doc.data() });
+                    });
+                    this.atualizarSelectDespesasModal();
+                    this.render();
+                }, (error) => console.error("Erro despesas:", error));
+
+                // Entradas Listener
+                db.collection(CODENTRADAS).onSnapshot((snapshot) => {
+                    this.entradas = [];
+                    snapshot.forEach((doc) => {
+                        this.entradas.push({ firebaseId: doc.id, ...doc.data() });
+                    });
+                    this.render();
+                }, (error) => console.error("Erro entradas:", error));
+            }
+
+            atualizarSelectDespesasModal() {
+                const select = document.getElementById('entDespesaId');
+                select.innerHTML = '<option value="">Nenhum (Entrada Livre no Caixa)</option>';
+                this.despesas.forEach(d => {
+                    const opt = document.createElement('option');
+                    opt.value = d.firebaseId;
+                    opt.textContent = `${d.nome} (${this.formatarMoeda(d.valor)}) - ${d.categoria}`;
+                    select.appendChild(opt);
+                });
+            }
+
+            mudarMesReferencia(valor) {
+                this.mesSelecionado = valor;
+                this.render();
+            }
+
+            mudarTab(tab) {
+                this.tabAtiva = tab;
+                ['resumo', 'precificacao', 'entradas', 'lancamentos'].forEach(t => {
+                    const el = document.getElementById(`tab-${t}`);
+                    const nav = document.getElementById(`nav-${t}`);
+                    if (t === tab) {
+                        el.classList.remove('hidden');
+                        nav.className = "flex flex-col items-center py-1 text-indigo-400 transition cursor-pointer";
+                    } else {
+                        el.classList.add('hidden');
+                        nav.className = "flex flex-col items-center py-1 text-slate-500 hover:text-slate-300 transition cursor-pointer";
+                    }
+                });
+                if (tab === 'precificacao') {
+                    this.calcularOrcamento();
+                }
+            }
+
+            togglePrivacidade() {
+                this.privacidadeAtiva = !this.privacidadeAtiva;
+                const icone = document.getElementById('iconeOlho');
+                icone.className = this.privacidadeAtiva ? "fa-solid fa-eye-slash text-xs" : "fa-solid fa-eye text-xs";
+                this.render();
+            }
+
+            abrirModalForm() {
+                document.getElementById('modalForm').classList.remove('hidden');
+            }
+
+            fecharModalForm() {
+                document.getElementById('modalForm').classList.add('hidden');
+                this.cancelarEdicao();
+            }
+
+            abrirModalEntrada() {
+                document.getElementById('entradaId').value = '';
+                document.getElementById('entradaForm').reset();
+                document.getElementById('entData').valueAsDate = new Date();
+                document.getElementById('entRecorrente').checked = false;
+                document.getElementById('entradaModalTitle').innerHTML = '<i class="fa-solid fa-circle-plus text-emerald-500 mr-2"></i> Registar Entrada / Ganho Fixo';
+                document.getElementById('btnSalvarEntrada').innerText = 'Salvar Entrada';
+                document.getElementById('modalEntrada').classList.remove('hidden');
+            }
+
+            fecharModalEntrada() {
+                document.getElementById('modalEntrada').classList.add('hidden');
+            }
+
+            salvarEntrada(e) {
+                e.preventDefault();
+                const firebaseId = document.getElementById('entradaId').value;
+                const nome = document.getElementById('entNome').value.trim();
+                const valor = parseFloat(document.getElementById('entValor').value);
+                const data = document.getElementById('entData').value;
+                const despesaIdVinculada = document.getElementById('entDespesaId').value;
+                const recorrente = document.getElementById('entRecorrente').checked;
+
+                if (!nome || isNaN(valor) || !data) return;
+
+                const objEntrada = { nome, valor, data, despesaIdVinculada, recorrente };
+
+                if (firebaseId) {
+                    db.collection(CODENTRADAS).doc(firebaseId).update(objEntrada)
+                        .then(() => {
+                            this.fecharModalEntrada();
+                            this.mostrarModal('Sucesso', 'Entrada atualizada com sucesso!', 'success');
+                        });
+                } else {
+                    db.collection(CODENTRADAS).add(objEntrada)
+                        .then(() => {
+                            this.fecharModalEntrada();
+                            this.mostrarModal('Sucesso', 'Entrada registada com sucesso!', 'success');
+                        });
+                }
+            }
+
+            editarEntrada(firebaseId) {
+                const entrada = this.entradas.find(e => e.firebaseId === firebaseId);
+                if (!entrada) return;
+
+                document.getElementById('entradaId').value = entrada.firebaseId;
+                document.getElementById('entNome').value = entrada.nome;
+                document.getElementById('entValor').value = entrada.valor;
+                document.getElementById('entData').value = entrada.data;
+                document.getElementById('entDespesaId').value = entrada.despesaIdVinculada || '';
+                document.getElementById('entRecorrente').checked = !!entrada.recorrente;
+
+                document.getElementById('entradaModalTitle').innerHTML = '<i class="fa-solid fa-pen-to-square text-emerald-500 mr-2"></i> Editar Entrada';
+                document.getElementById('btnSalvarEntrada').innerText = 'Atualizar Entrada';
+                document.getElementById('modalEntrada').classList.remove('hidden');
+            }
+
+            excluirEntrada(firebaseId) {
+                if (confirm('Deseja excluir esta entrada?')) {
+                    db.collection(CODENTRADAS).doc(firebaseId).delete().catch(err => console.error(err));
+                }
+            }
+
+            salvarDespesa(e) {
+                e.preventDefault();
+                const firebaseId = document.getElementById('expenseId').value;
+                const nome = document.getElementById('nome').value.trim();
+                const valor = parseFloat(document.getElementById('valor').value);
+                const data = document.getElementById('data').value;
+                const categoria = document.getElementById('categoria').value;
+                const subcategoria = document.getElementById('subcategoria').value.trim() || 'Geral';
+                const recorrente = document.getElementById('recorrente').checked;
+
+                if (!nome || isNaN(valor) || !data) return;
+
+                const objDespesa = { 
+                    id: firebaseId ? Number(document.getElementById('expenseId').dataset.numericId) : Date.now(), 
+                    nome, valor, data, categoria, subcategoria, recorrente 
+                };
+
+                if (firebaseId) {
+                    db.collection(CODESPESAS).doc(firebaseId).update(objDespesa)
+                        .then(() => { this.fecharModalForm(); this.mostrarModal('Sucesso', 'Atualizado!', 'success'); });
+                } else {
+                    db.collection(CODESPESAS).add(objDespesa)
+                        .then(() => { this.fecharModalForm(); this.mostrarModal('Sucesso', 'Adicionado!', 'success'); });
+                }
+            }
+
+            editar(firebaseId) {
+                const despesa = this.despesas.find(d => d.firebaseId === firebaseId);
+                if (!despesa) return;
+
+                document.getElementById('expenseId').value = despesa.firebaseId;
+                document.getElementById('expenseId').dataset.numericId = despesa.id || Date.now();
+                document.getElementById('nome').value = despesa.nome;
+                document.getElementById('valor').value = despesa.valor;
+                document.getElementById('data').value = despesa.data;
+                document.getElementById('categoria').value = despesa.categoria;
+                document.getElementById('subcategoria').value = despesa.subcategoria || '';
+                document.getElementById('recorrente').checked = !!despesa.recorrente;
+
+                document.getElementById('formTitle').innerHTML = '<i class="fa-solid fa-pen-to-square text-indigo-500 mr-2"></i> Editar Despesa';
+                document.getElementById('btnSalvar').innerText = 'Atualizar';
+                this.abrirModalForm();
+            }
+
+            cancelarEdicao() {
+                document.getElementById('expenseForm').reset();
+                document.getElementById('expenseId').value = '';
+                document.getElementById('data').valueAsDate = new Date();
+                document.getElementById('subcategoria').value = '';
+                document.getElementById('recorrente').checked = false;
+                document.getElementById('formTitle').innerHTML = '<i class="fa-solid fa-circle-plus text-indigo-500 mr-2"></i> Nova Despesa';
+                document.getElementById('btnSalvar').innerText = 'Salvar';
+            }
+
+            excluir(firebaseId) {
+                if (confirm('Deseja excluir esta despesa?')) {
+                    db.collection(CODESPESAS).doc(firebaseId).delete().catch(err => console.error(err));
+                }
+            }
+
+            limparTudo() {
+                const despesasMes = this.despesas.filter(d => (d.data && d.data.startsWith(this.mesSelecionado)) && !d.recorrente);
+                if (despesasMes.length === 0) return;
+
+                if (confirm(`Deseja apagar todas as despesas avulsas de ${this.mesSelecionado}?`)) {
+                    const batch = db.batch();
+                    despesasMes.forEach(d => batch.delete(db.collection(CODESPESAS).doc(d.firebaseId)));
+                    batch.commit().then(() => this.render());
+                }
+            }
+
+            calcularMetricasDiasRestantes(anoMes) {
+                if (!anoMes) return { diasRestantes: 1 };
+                const [ano, mes] = anoMes.split('-').map(Number);
+                const totalDias = new Date(ano, mes, 0).getDate();
+                
+                const hoje = new Date();
+                const diaAtual = (hoje.getFullYear() === ano && (hoje.getMonth() + 1) === mes) ? hoje.getDate() : (anoMes < this.getMesAtualFormatado() ? totalDias : 1);
+
+                let diasUteisRestantes = 0;
+                for (let d = diaAtual; d <= totalDias; d++) {
+                    const dt = new Date(ano, mes - 1, d);
+                    if (dt.getDay() !== 0) { // Ignora domingos
+                        diasUteisRestantes++;
+                    }
+                }
+                return { diasRestantes: Math.max(diasUteisRestantes, 1) };
+            }
+
+            formatarMoeda(val) {
+                if (this.privacidadeAtiva) return "R$ •••••";
+                return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            }
+
+            formatarData(dt) {
+                if (!dt) return '';
+                const p = dt.split('-');
+                return `${p[2]}/${p[1]}/${p[0]}`;
+            }
+
+            calcularOrcamento() {
+                const mat = parseFloat(document.getElementById('simMat').value) || 0;
+                const diasServico = parseFloat(document.getElementById('simDias').value) || 0;
+                const margemPct = parseFloat(document.getElementById('simMargem').value) || 0;
+
+                document.getElementById('resDiasLabel').innerText = diasServico;
+
+                const despesasMes = this.despesas.filter(d => {
+                    if (!d.data) return false;
+                    return d.data.startsWith(this.mesSelecionado) || (d.recorrente && d.data < `${this.mesSelecionado}-01`);
+                });
+                let totalGeral = 0;
+                despesasMes.forEach(d => totalGeral += d.valor);
+
+                const entradasMes = this.entradas.filter(e => {
+                    if (!e.data) return false;
+                    return e.data.startsWith(this.mesSelecionado) || (e.recorrente && e.data < `${this.mesSelecionado}-01`);
+                });
+                let totalEntradas = 0;
+                entradasMes.forEach(e => totalEntradas += e.valor);
+
+                const saldoPendente = Math.max(totalGeral - totalEntradas, 0);
+                const met = this.calcularMetricasDiasRestantes(this.mesSelecionado);
+                const custoDiarioRestante = saldoPendente > 0 ? (saldoPendente / met.diasRestantes) : 50;
+
+                const custoMaoDeObra = diasServico * custoDiarioRestante;
+                const subtotal = mat + custoMaoDeObra;
+                const valorLucro = subtotal * (margemPct / 100);
+                const precoFinal = subtotal + valorLucro;
+
+                document.getElementById('resMaoDeObra').innerText = this.formatarMoeda(custoMaoDeObra);
+                document.getElementById('resLucro').innerText = this.formatarMoeda(valorLucro);
+                document.getElementById('resPrecoFinal').innerText = this.formatarMoeda(precoFinal);
+            }
+
+            render() {
+                const listaEl = document.getElementById('listaDespesas');
+                const vazioEl = document.getElementById('vazioState');
+                const listaEntradasEl = document.getElementById('listaEntradas');
+                const vazioEntradasEl = document.getElementById('vazioEntradasState');
+                
+                const despesasMes = this.despesas.filter(d => {
+                    if (!d.data) return false;
+                    return d.data.startsWith(this.mesSelecionado) || (d.recorrente && d.data < `${this.mesSelecionado}-01`);
+                });
+
+                const entradasMes = this.entradas.filter(e => {
+                    if (!e.data) return false;
+                    const ehDoMes = e.data.startsWith(this.mesSelecionado);
+                    const ehFixaPassada = e.recorrente && e.data < `${this.mesSelecionado}-01`;
+                    return ehDoMes || ehFixaPassada;
+                });
+
+                entradasMes.forEach(e => {
+                    if (e.recorrente && e.data < `${this.mesSelecionado}-01`) {
+                        const diaOriginal = e.data.split('-')[2] || '01';
+                        e.dataExibicao = `${this.mesSelecionado}-${diaOriginal}`;
+                    } else {
+                        e.dataExibicao = e.data;
+                    }
+                });
+
+                const filtradas = despesasMes.filter(d => this.filtroAtual === 'todos' || d.categoria === this.filtroAtual);
+                filtradas.sort((a, b) => new Date(b.data) - new Date(a.data));
+                entradasMes.sort((a, b) => new Date(b.dataExibicao) - new Date(a.dataExibicao));
+
+                let totalGeral = 0, totalCasa = 0, totalEmpresa = 0;
+                const subcategoriasMap = {};
+
+                despesasMes.forEach(d => {
+                    totalGeral += d.valor;
+                    if (d.categoria === 'Casa') totalCasa += d.valor;
+                    if (d.categoria === 'Empresa') totalEmpresa += d.valor;
+
+                    const sub = d.subcategoria || 'Geral';
+                    if (!subcategoriasMap[sub]) subcategoriasMap[sub] = { total: 0, qtd: 0 };
+                    subcategoriasMap[sub].total += d.valor;
+                    subcategoriasMap[sub].qtd += 1;
+                });
+
+                let totalEntradas = 0;
+                entradasMes.forEach(e => totalEntradas += e.valor);
+
+                const saldo = totalEntradas - totalGeral;
+                const saldoPendente = Math.max(totalGeral - totalEntradas, 0);
+
+                const met = this.calcularMetricasDiasRestantes(this.mesSelecionado);
+                const custoPorDiaRestante = saldoPendente > 0 ? (saldoPendente / met.diasRestantes) : 0;
+
+                document.getElementById('totalCasa').innerText = this.formatarMoeda(totalCasa);
+                document.getElementById('totalEmpresa').innerText = this.formatarMoeda(totalEmpresa);
+                document.getElementById('faturamentoTotalResumo').innerText = this.formatarMoeda(totalEntradas);
+                document.getElementById('custoPorDia').innerText = this.formatarMoeda(custoPorDiaRestante);
+                document.getElementById('diasRestantesCount').innerText = `${met.diasRestantes} dias`;
+                
+                const saldoEl = document.getElementById('saldoLiquido');
+                saldoEl.innerText = this.formatarMoeda(saldo);
+                saldoEl.className = `text-3xl font-black mt-1 tracking-tight valor-ocultavel ${saldo > 0 ? 'text-emerald-400' : saldo < 0 ? 'text-rose-400' : 'text-white'}`;
+
+                if (this.tabAtiva === 'precificacao') {
+                    this.calcularOrcamento();
+                }
+
+                // Gráfico Subcategorias
+                const containerSub = document.getElementById('containerSubcategorias');
+                const vazioSub = document.getElementById('vazioSubcategorias');
+                containerSub.innerHTML = '';
+
+                const subArray = Object.keys(subcategoriasMap).map(sub => ({
+                    nome: sub, total: subcategoriasMap[sub].total, qtd: subcategoriasMap[sub].qtd
+                })).sort((a, b) => b.total - a.total);
+
+                if (subArray.length === 0) {
+                    vazioSub.classList.remove('hidden');
+                } else {
+                    vazioSub.classList.add('hidden');
+                    subArray.forEach(item => {
+                        const percentual = totalGeral > 0 ? Math.round((item.total / totalGeral) * 100) : 0;
+                        const divBarra = document.createElement('div');
+                        divBarra.className = "space-y-1";
+                        divBarra.innerHTML = `
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="font-bold text-slate-300">${item.nome} <span class="text-[10px] text-slate-500 font-normal">(${item.qtd}x)</span></span>
+                                <span class="font-semibold text-white valor-ocultavel">${this.formatarMoeda(item.total)} <span class="text-indigo-400 text-[10px]">(${percentual}%)</span></span>
+                            </div>
+                            <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                                <div class="bg-gradient-to-r from-indigo-500 to-violet-500 h-full rounded-full transition-all duration-500" style="width: ${percentual}%"></div>
+                            </div>
+                        `;
+                        containerSub.appendChild(divBarra);
+                    });
+                }
+
+                // Renderizar Lista de Entradas
+                listaEntradasEl.innerHTML = '';
+                if (entradasMes.length === 0) {
+                    vazioEntradasEl.classList.remove('hidden');
+                } else {
+                    vazioEntradasEl.classList.add('hidden');
+                    entradasMes.forEach(e => {
+                        const div = document.createElement('div');
+                        div.className = "bg-slate-900 border border-slate-800/80 rounded-2xl p-4 flex items-center justify-between";
+                        const badgeFixa = e.recorrente ? `<span class="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded ml-1.5">Fixo</span>` : '';
+                        
+                        let infoVinculo = '';
+                        if (e.despesaIdVinculada) {
+                            const desp = this.despesas.find(d => d.firebaseId === e.despesaIdVinculada);
+                            if (desp) {
+                                infoVinculo = `<br><span class="text-[10px] text-indigo-400">Vinculado a: ${desp.nome}</span>`;
+                            }
+                        }
+
+                        div.innerHTML = `
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
+                                    <i class="fa-solid fa-wallet"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-sm font-bold text-white flex items-center">${e.nome} ${badgeFixa}</h4>
+                                    <p class="text-[11px] text-slate-400 mt-0.5">${this.formatarData(e.dataExibicao)} • <span class="text-emerald-400 font-semibold">Entrada Realizada</span>${infoVinculo}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <span class="text-sm font-black text-emerald-400 valor-ocultavel">+ ${this.formatarMoeda(e.valor)}</span>
+                                <div class="flex items-center space-x-1">
+                                    <button onclick="app.editarEntrada('${e.firebaseId}')" class="w-7 h-7 text-slate-400 hover:text-indigo-400 bg-slate-800 rounded-lg flex items-center justify-center transition cursor-pointer">
+                                        <i class="fa-solid fa-pen text-[10px]"></i>
+                                    </button>
+                                    <button onclick="app.excluirEntrada('${e.firebaseId}')" class="w-7 h-7 text-slate-400 hover:text-rose-400 bg-slate-800 rounded-lg flex items-center justify-center transition cursor-pointer">
+                                        <i class="fa-solid fa-trash text-[10px]"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                        listaEntradasEl.appendChild(div);
+                    });
+                }
+
+                // Renderizar Lista Despesas
+                listaEl.innerHTML = '';
+                if (filtradas.length === 0) {
+                    vazioEl.classList.remove('hidden');
+                } else {
+                    vazioEl.classList.add('hidden');
+                    filtradas.forEach(d => {
+                        const div = document.createElement('div');
+                        div.className = "bg-slate-900 border border-slate-800/80 rounded-2xl p-4 flex items-center justify-between";
+                        const iconBg = d.categoria === 'Casa' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-blue-500/10 text-blue-400';
+                        const icon = d.categoria === 'Casa' ? 'fa-house' : 'fa-building';
+                        const badgeFixa = d.recorrente ? `<span class="text-[9px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-1.5 py-0.5 rounded ml-1.5">Fixa</span>` : '';
+                        const tagSub = d.subcategoria ? `• <span class="text-indigo-300 font-medium">${d.subcategoria}</span>` : '';
+
+                        div.innerHTML = `
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center shrink-0">
+                                    <i class="fa-solid ${icon}"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-sm font-bold text-white flex items-center">${d.nome} ${badgeFixa}</h4>
+                                    <p class="text-[11px] text-slate-400 mt-0.5">${this.formatarData(d.dataExibicao)} • <span class="uppercase font-semibold">${d.categoria}</span> ${tagSub}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <span class="text-sm font-black text-white valor-ocultavel">${this.formatarMoeda(d.valor)}</span>
+                                <div class="flex items-center space-x-1">
+                                    <button onclick="app.editar('${d.firebaseId}')" class="w-7 h-7 text-slate-400 hover:text-indigo-400 bg-slate-800 rounded-lg flex items-center justify-center transition cursor-pointer">
+                                        <i class="fa-solid fa-pen text-[10px]"></i>
+                                    </button>
+                                    <button onclick="app.excluir('${d.firebaseId}')" class="w-7 h-7 text-slate-400 hover:text-rose-400 bg-slate-800 rounded-lg flex items-center justify-center transition cursor-pointer">
+                                        <i class="fa-solid fa-trash text-[10px]"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                        listaEl.appendChild(div);
+                    });
+                }
+            }
+
+            mostrarModal(t, m, tipo) {
+                const modal = document.getElementById('modalAlerta');
+                document.getElementById('modalTitle').innerText = t;
+                document.getElementById('modalMsg').innerText = m;
+                const icon = document.getElementById('modalIcon');
+                if (tipo === 'success') {
+                    icon.className = "w-12 h-12 rounded-2xl mx-auto flex items-center justify-center text-xl bg-emerald-500/10 text-emerald-400";
+                    icon.innerHTML = '<i class="fa-solid fa-check"></i>';
+                } else {
+                    icon.className = "w-12 h-12 rounded-2xl mx-auto flex items-center justify-center text-xl bg-amber-500/10 text-amber-400";
+                    icon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+                }
+                modal.classList.remove('hidden');
+            }
+
+            fecharModal() {
+                document.getElementById('modalAlerta').classList.add('hidden');
+            }
+        }
+
+        const app = new FinanceApp();
+    </script>
+</body>
+</html>
+
+```
