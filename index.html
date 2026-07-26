@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NexFinance - Gestão & Precificação Estratégica</title>
+    
+    <!-- PWA Configurações -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#020617">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="NexFinance">
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <!-- FontAwesome para ícones -->
@@ -463,6 +471,15 @@
         
         const db = firebase.firestore();
         firebase.auth().signInAnonymously().catch(err => console.error("Erro auth:", err));
+
+        // Registro do Service Worker para PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Service Worker registado com sucesso:', reg.scope))
+                    .catch(err => console.log('Falha ao registar o Service Worker:', err));
+            });
+        }
 
         const CODESPESAS = "nexfinance_despesas";
         const CODENTRADAS = "nexfinance_entradas";
