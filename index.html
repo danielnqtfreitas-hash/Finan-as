@@ -126,7 +126,7 @@
                         <p id="diasRestantesCount" class="text-lg font-black text-indigo-300 mt-0.5">0 dias</p>
                     </div>
                 </div>
-                <p class="text-[10px] text-slate-400 italic pt-1">💡 Calculado dividindo o saldo pendente de contas apenas pelos dias úteis que ainda faltam no mês.</p>
+                <p class="text-[10px] text-slate-400 italic pt-1">💡 Abate proporcionalmente contas cobertas por entradas e divide o saldo pendente apenas pelos dias úteis restantes.</p>
             </div>
 
             <!-- Gráfico Visual de Subcategorias -->
@@ -250,7 +250,7 @@
                 </div>
             </div>
 
-            <!-- Lista de Despesas -->
+            <!-- Lista de Despesas (Ordenadas Alfabeticamente) -->
             <div id="listaDespesas" class="space-y-3">
                 <!-- Preenchido via JS -->
             </div>
@@ -324,7 +324,7 @@
                 </div>
 
                 <div>
-                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Data</label>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Data de Vencimento</label>
                     <input type="date" id="data" required 
                         class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
                 </div>
@@ -373,7 +373,7 @@
 
     <!-- Modal de Entrada -->
     <div id="modalEntrada" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
-        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b border-slate-800 pb-3">
                 <h3 id="entradaModalTitle" class="font-bold text-white text-base flex items-center">
                     <i class="fa-solid fa-circle-plus text-emerald-500 mr-2"></i> Registar Entrada / Ganho Fixo
@@ -386,28 +386,36 @@
                 <input type="hidden" id="entradaId">
                 <div>
                     <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Nome / Descrição do Ganho</label>
-                    <input type="text" id="entNome" required placeholder="Ex: Pró-labore / Contrato Fixo" 
-                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
-                </div>
-                <div>
-                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Valor Recebido (R$)</label>
-                    <input type="number" step="0.01" id="entValor" required placeholder="0,00" 
+                    <input type="text" id="entNome" required placeholder="Ex: Pró-labore / Salário" 
                         class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
                 </div>
                 <div>
                     <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Data de Recebimento</label>
-                    <input type="date" id="entData" required 
+                    <input type="date" id="entData" required onchange="app.atualizarCheckboxesDespesasModal()"
                         class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
                 </div>
-
-                <!-- Associar a um Custo Específico -->
                 <div>
-                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Vincular a Custo Específico (Opcional)</label>
-                    <select id="entDespesaId" 
-                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
-                        <option value="">Nenhum (Entrada Livre no Caixa)</option>
-                        <!-- Preenchido via JS com as despesas cadastradas -->
-                    </select>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Valor Recebido (R$)</label>
+                    <input type="number" step="0.01" id="entValor" required oninput="app.atualizarCalculoSaldoEntradaModal()" placeholder="0,00" 
+                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
+                </div>
+
+                <!-- Associar a Múltiplas Despesas com Alerta de Vencimento -->
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center">
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Vincular a Despesas</label>
+                        <span id="labelSaldoRestanteModal" class="text-[11px] font-bold text-emerald-400">Disponível: R$ 0,00</span>
+                    </div>
+                    <p class="text-[10px] text-slate-400">Contas com vencimento anterior ao ganho receberão um aviso de uso de reserva:</p>
+                    <div id="containerCheckboxesDespesas" class="space-y-1.5 max-h-40 overflow-y-auto bg-slate-950 border border-slate-800 rounded-xl p-2.5">
+                        <!-- Preenchido via JS com checkboxes -->
+                    </div>
+                    <div id="avisoExcessoModal" class="hidden text-[10px] font-semibold text-rose-400 bg-rose-500/10 border border-rose-500/20 p-2 rounded-lg">
+                        ⚠️ O valor total das despesas selecionadas ultrapassa a entrada. Faltará valor para cobrir 100% de todas as selecionadas.
+                    </div>
+                    <div id="avisoCronologiaModal" class="hidden text-[10px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 p-2 rounded-lg">
+                        ⚠️ Alguma conta selecionada vence antes da data do recebimento desta entrada. Certifique-se de que há saldo de reserva/capital de giro para pagá-la até lá.
+                    </div>
                 </div>
 
                 <!-- Checkbox de Entrada Recorrente / Fixa -->
@@ -439,7 +447,7 @@
         </div>
     </div>
 
-    <!-- Script de Gestão com Ganhos Fixos, Edição de Entradas, Associação de Custos e Simulador -->
+    <!-- Script de Gestão Atualizado -->
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyBI7Zecb-2tn3zUAAhiO5UmtTGcAALUiKg",
@@ -489,7 +497,7 @@
                     snapshot.forEach((doc) => {
                         this.despesas.push({ firebaseId: doc.id, ...doc.data() });
                     });
-                    this.atualizarSelectDespesasModal();
+                    this.atualizarCheckboxesDespesasModal();
                     this.render();
                 }, (error) => console.error("Erro despesas:", error));
 
@@ -503,15 +511,83 @@
                 }, (error) => console.error("Erro entradas:", error));
             }
 
-            atualizarSelectDespesasModal() {
-                const select = document.getElementById('entDespesaId');
-                select.innerHTML = '<option value="">Nenhum (Entrada Livre no Caixa)</option>';
-                this.despesas.forEach(d => {
-                    const opt = document.createElement('option');
-                    opt.value = d.firebaseId;
-                    opt.textContent = `${d.nome} (${this.formatarMoeda(d.valor)}) - ${d.categoria}`;
-                    select.appendChild(opt);
+            atualizarCheckboxesDespesasModal(despesasSelecionadas = []) {
+                const container = document.getElementById('containerCheckboxesDespesas');
+                if (!container) return;
+                container.innerHTML = '';
+                
+                const despesasOrdenadas = [...this.despesas].sort((a, b) => a.nome.localeCompare(b.nome));
+
+                if (despesasOrdenadas.length === 0) {
+                    container.innerHTML = '<p class="text-[10px] text-slate-500 text-center py-2">Nenhuma despesa cadastrada ainda.</p>';
+                    return;
+                }
+
+                const dataEntradaStr = document.getElementById('entData').value;
+                const dataEntrada = dataEntradaStr ? new Date(dataEntradaStr + 'T00:00:00') : new Date();
+
+                despesasOrdenadas.forEach(d => {
+                    const isChecked = despesasSelecionadas.includes(d.firebaseId);
+                    const dataDespesa = d.data ? new Date(d.data + 'T00:00:00') : new Date();
+                    
+                    const venceAntes = dataDespesa < dataEntrada;
+                    const badgeVencimento = venceAntes ? `<span class="text-[9px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-1 py-0.5 rounded ml-1" title="Vence antes do ganho (Usa Reserva)">⚠️ Vence antes</span>` : '';
+
+                    const div = document.createElement('label');
+                    div.className = "flex items-center justify-between p-1.5 hover:bg-slate-900 rounded-lg cursor-pointer transition text-xs";
+                    div.innerHTML = `
+                        <div class="flex items-center space-x-2 truncate pr-2">
+                            <input type="checkbox" name="despesaVinculada" value="${d.firebaseId}" data-valor="${d.valor}" data-vencimento="${d.data || ''}" ${isChecked ? 'checked' : ''} onchange="app.atualizarCalculoSaldoEntradaModal()" class="rounded border-slate-800 text-emerald-600 focus:ring-emerald-500 bg-slate-950 shrink-0">
+                            <span class="text-slate-200 font-medium truncate">${d.nome} ${badgeVencimento}</span>
+                        </div>
+                        <span class="text-[10px] text-slate-400 shrink-0">${this.formatarMoeda(d.valor)}</span>
+                    `;
+                    container.appendChild(div);
                 });
+
+                this.atualizarCalculoSaldoEntradaModal();
+            }
+
+            atualizarCalculoSaldoEntradaModal() {
+                const valorEntrada = parseFloat(document.getElementById('entValor').value) || 0;
+                const checkboxes = document.querySelectorAll('input[name="despesaVinculada"]:checked');
+                const dataEntradaStr = document.getElementById('entData').value;
+                const dataEntrada = dataEntradaStr ? new Date(dataEntradaStr + 'T00:00:00') : new Date();
+                
+                let somaDespesasSelecionadas = 0;
+                let temContaVencendoAntes = false;
+
+                checkboxes.forEach(cb => {
+                    somaDespesasSelecionadas += parseFloat(cb.dataset.valor) || 0;
+                    const dataDespesaStr = cb.dataset.vencimento;
+                    if (dataDespesaStr) {
+                        const dataDespesa = new Date(dataDespesaStr + 'T00:00:00');
+                        if (dataDespesa < dataEntrada) {
+                            temContaVencendoAntes = true;
+                        }
+                    }
+                });
+
+                const saldoRestante = valorEntrada - somaDespesasSelecionadas;
+                const labelSaldo = document.getElementById('labelSaldoRestanteModal');
+                const avisoExcesso = document.getElementById('avisoExcessoModal');
+                const avisoCronologia = document.getElementById('avisoCronologiaModal');
+
+                if (saldoRestante >= 0) {
+                    labelSaldo.className = "text-[11px] font-bold text-emerald-400";
+                    labelSaldo.innerText = `Restante livre: ${this.formatarMoeda(saldoRestante)}`;
+                    avisoExcesso.classList.add('hidden');
+                } else {
+                    labelSaldo.className = "text-[11px] font-bold text-rose-400";
+                    labelSaldo.innerText = `Faltará: ${this.formatarMoeda(Math.abs(saldoRestante))}`;
+                    avisoExcesso.classList.remove('hidden');
+                }
+
+                if (temContaVencendoAntes) {
+                    avisoCronologia.classList.remove('hidden');
+                } else {
+                    avisoCronologia.classList.add('hidden');
+                }
             }
 
             mudarMesReferencia(valor) {
@@ -558,6 +634,7 @@
                 document.getElementById('entradaForm').reset();
                 document.getElementById('entData').valueAsDate = new Date();
                 document.getElementById('entRecorrente').checked = false;
+                this.atualizarCheckboxesDespesasModal([]);
                 document.getElementById('entradaModalTitle').innerHTML = '<i class="fa-solid fa-circle-plus text-emerald-500 mr-2"></i> Registar Entrada / Ganho Fixo';
                 document.getElementById('btnSalvarEntrada').innerText = 'Salvar Entrada';
                 document.getElementById('modalEntrada').classList.remove('hidden');
@@ -573,12 +650,14 @@
                 const nome = document.getElementById('entNome').value.trim();
                 const valor = parseFloat(document.getElementById('entValor').value);
                 const data = document.getElementById('entData').value;
-                const despesaIdVinculada = document.getElementById('entDespesaId').value;
                 const recorrente = document.getElementById('entRecorrente').checked;
+
+                const checkboxes = document.querySelectorAll('input[name="despesaVinculada"]:checked');
+                const despesasIdsVinculadas = Array.from(checkboxes).map(cb => cb.value);
 
                 if (!nome || isNaN(valor) || !data) return;
 
-                const objEntrada = { nome, valor, data, despesaIdVinculada, recorrente };
+                const objEntrada = { nome, valor, data, despesasIdsVinculadas, recorrente };
 
                 if (firebaseId) {
                     db.collection(CODENTRADAS).doc(firebaseId).update(objEntrada)
@@ -603,8 +682,10 @@
                 document.getElementById('entNome').value = entrada.nome;
                 document.getElementById('entValor').value = entrada.valor;
                 document.getElementById('entData').value = entrada.data;
-                document.getElementById('entDespesaId').value = entrada.despesaIdVinculada || '';
                 document.getElementById('entRecorrente').checked = !!entrada.recorrente;
+
+                const vinculadas = entrada.despesasIdsVinculadas || (entrada.despesaIdVinculada ? [entrada.despesaIdVinculada] : []);
+                this.atualizarCheckboxesDespesasModal(vinculadas);
 
                 document.getElementById('entradaModalTitle').innerHTML = '<i class="fa-solid fa-pen-to-square text-emerald-500 mr-2"></i> Editar Entrada';
                 document.getElementById('btnSalvarEntrada').innerText = 'Atualizar Entrada';
@@ -688,13 +769,31 @@
                 }
             }
 
-            calcularMetricasDiasRestantes(anoMes) {
+            calcularMetricasDiasRestantes(anoMes, despesasMes, entradasMes) {
                 if (!anoMes) return { diasRestantes: 1 };
                 const [ano, mes] = anoMes.split('-').map(Number);
                 const totalDias = new Date(ano, mes, 0).getDate();
                 
                 const hoje = new Date();
                 const diaAtual = (hoje.getFullYear() === ano && (hoje.getMonth() + 1) === mes) ? hoje.getDate() : (anoMes < this.getMesAtualFormatado() ? totalDias : 1);
+
+                const coberturasPorDespesa = {};
+                entradasMes.forEach(e => {
+                    const idsVinculadas = e.despesasIdsVinculadas || (e.despesaIdVinculada ? [e.despesaIdVinculada] : []);
+                    if (idsVinculadas.length === 0) return;
+
+                    const valorPorDespesa = e.valor / idsVinculadas.length;
+                    idsVinculadas.forEach(idDesp => {
+                        coberturasPorDespesa[idDesp] = (coberturasPorDespesa[idDesp] || 0) + valorPorDespesa;
+                    });
+                });
+
+                let saldoPendenteReal = 0;
+                despesasMes.forEach(d => {
+                    const valorPagoPorEntradas = coberturasPorDespesa[d.firebaseId] || 0;
+                    const quantoFalta = Math.max(d.valor - valorPagoPorEntradas, 0);
+                    saldoPendenteReal += quantoFalta;
+                });
 
                 let diasUteisRestantes = 0;
                 for (let d = diaAtual; d <= totalDias; d++) {
@@ -703,7 +802,12 @@
                         diasUteisRestantes++;
                     }
                 }
-                return { diasRestantes: Math.max(diasUteisRestantes, 1) };
+                const diasUteis = Math.max(diasUteisRestantes, 1);
+
+                return { 
+                    diasRestantes: diasUteis, 
+                    custoDiario: saldoPendenteReal > 0 ? (saldoPendenteReal / diasUteis) : 0 
+                };
             }
 
             formatarMoeda(val) {
@@ -728,19 +832,13 @@
                     if (!d.data) return false;
                     return d.data.startsWith(this.mesSelecionado) || (d.recorrente && d.data < `${this.mesSelecionado}-01`);
                 });
-                let totalGeral = 0;
-                despesasMes.forEach(d => totalGeral += d.valor);
-
                 const entradasMes = this.entradas.filter(e => {
                     if (!e.data) return false;
                     return e.data.startsWith(this.mesSelecionado) || (e.recorrente && e.data < `${this.mesSelecionado}-01`);
                 });
-                let totalEntradas = 0;
-                entradasMes.forEach(e => totalEntradas += e.valor);
 
-                const saldoPendente = Math.max(totalGeral - totalEntradas, 0);
-                const met = this.calcularMetricasDiasRestantes(this.mesSelecionado);
-                const custoDiarioRestante = saldoPendente > 0 ? (saldoPendente / met.diasRestantes) : 50;
+                const met = this.calcularMetricasDiasRestantes(this.mesSelecionado, despesasMes, entradasMes);
+                const custoDiarioRestante = met.custoDiario > 0 ? met.custoDiario : 50;
 
                 const custoMaoDeObra = diasServico * custoDiarioRestante;
                 const subtotal = mat + custoMaoDeObra;
@@ -779,10 +877,6 @@
                     }
                 });
 
-                const filtradas = despesasMes.filter(d => this.filtroAtual === 'todos' || d.categoria === this.filtroAtual);
-                filtradas.sort((a, b) => new Date(b.data) - new Date(a.data));
-                entradasMes.sort((a, b) => new Date(b.dataExibicao) - new Date(a.dataExibicao));
-
                 let totalGeral = 0, totalCasa = 0, totalEmpresa = 0;
                 const subcategoriasMap = {};
 
@@ -801,16 +895,13 @@
                 entradasMes.forEach(e => totalEntradas += e.valor);
 
                 const saldo = totalEntradas - totalGeral;
-                const saldoPendente = Math.max(totalGeral - totalEntradas, 0);
-
-                const met = this.calcularMetricasDiasRestantes(this.mesSelecionado);
-                const custoPorDiaRestante = saldoPendente > 0 ? (saldoPendente / met.diasRestantes) : 0;
+                const met = this.calcularMetricasDiasRestantes(this.mesSelecionado, despesasMes, entradasMes);
 
                 document.getElementById('totalCasa').innerText = this.formatarMoeda(totalCasa);
                 document.getElementById('totalEmpresa').innerText = this.formatarMoeda(totalEmpresa);
                 document.getElementById('faturamentoTotalResumo').innerText = this.formatarMoeda(totalEntradas);
-                document.getElementById('custoPorDia').innerText = this.formatarMoeda(custoPorDiaRestante);
-                document.getElementById('diasRestantesCount').innerText = `${met.diasRestantes} dias`;
+                document.getElementById('custoPorDia').innerText = this.formatarMoeda(met.custoDiario);
+                document.getElementById('diasRestantesCount').innerText = `${met.diasRestantes} dias úteis`;
                 
                 const saldoEl = document.getElementById('saldoLiquido');
                 saldoEl.innerText = this.formatarMoeda(saldo);
@@ -850,6 +941,16 @@
                     });
                 }
 
+                const coberturasGlobais = {};
+                entradasMes.forEach(e => {
+                    const idsVinculadas = e.despesasIdsVinculadas || (e.despesaIdVinculada ? [e.despesaIdVinculada] : []);
+                    if (idsVinculadas.length === 0) return;
+                    const valPorDespesa = e.valor / idsVinculadas.length;
+                    idsVinculadas.forEach(id => {
+                        coberturasGlobais[id] = (coberturasGlobais[id] || 0) + valPorDespesa;
+                    });
+                });
+
                 // Renderizar Lista de Entradas
                 listaEntradasEl.innerHTML = '';
                 if (entradasMes.length === 0) {
@@ -862,10 +963,14 @@
                         const badgeFixa = e.recorrente ? `<span class="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded ml-1.5">Fixo</span>` : '';
                         
                         let infoVinculo = '';
-                        if (e.despesaIdVinculada) {
-                            const desp = this.despesas.find(d => d.firebaseId === e.despesaIdVinculada);
-                            if (desp) {
-                                infoVinculo = `<br><span class="text-[10px] text-indigo-400">Vinculado a: ${desp.nome}</span>`;
+                        const idsVinculadas = e.despesasIdsVinculadas || (e.despesaIdVinculada ? [e.despesaIdVinculada] : []);
+                        if (idsVinculadas.length > 0) {
+                            const nomesDespesas = idsVinculadas.map(id => {
+                                const desp = this.despesas.find(d => d.firebaseId === id);
+                                return desp ? desp.nome : '';
+                            }).filter(Boolean).join(', ');
+                            if (nomesDespesas) {
+                                infoVinculo = `<br><span class="text-[10px] text-indigo-400">Abate: ${nomesDespesas}</span>`;
                             }
                         }
 
@@ -895,6 +1000,9 @@
                     });
                 }
 
+                const filtradas = despesasMes.filter(d => this.filtroAtual === 'todos' || d.categoria === this.filtroAtual);
+                filtradas.sort((a, b) => a.nome.localeCompare(b.nome));
+
                 // Renderizar Lista Despesas
                 listaEl.innerHTML = '';
                 if (filtradas.length === 0) {
@@ -909,23 +1017,37 @@
                         const badgeFixa = d.recorrente ? `<span class="text-[9px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-1.5 py-0.5 rounded ml-1.5">Fixa</span>` : '';
                         const tagSub = d.subcategoria ? `• <span class="text-indigo-300 font-medium">${d.subcategoria}</span>` : '';
 
+                        const pagoAteAgora = coberturasGlobais[d.firebaseId] || 0;
+                        const pctGarantido = d.valor > 0 ? Math.min(Math.round((pagoAteAgora / d.valor) * 100), 100) : 0;
+                        
+                        let badgeStatus = '';
+                        if (pctGarantido >= 100) {
+                            badgeStatus = `<div class="mt-1.5 inline-flex items-center text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full"><i class="fa-solid fa-check-circle mr-1"></i> 100% Garantido por entradas</div>`;
+                        } else if (pctGarantido > 0) {
+                            const falta = d.valor - pagoAteAgora;
+                            badgeStatus = `<div class="mt-1.5 inline-flex items-center text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full"><i class="fa-solid fa-triangle-exclamation mr-1"></i> ${pctGarantido}% Garantido (Falta ${this.formatarMoeda(falta)})</div>`;
+                        } else {
+                            badgeStatus = `<div class="mt-1.5 inline-flex items-center text-[10px] font-semibold bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full"><i class="fa-solid fa-circle-xmark mr-1"></i> Sem cobertura de entrada</div>`;
+                        }
+
                         div.innerHTML = `
-                            <div class="flex items-center space-x-3">
+                            <div class="flex items-center space-x-3 flex-1 min-w-0 pr-2">
                                 <div class="w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center shrink-0">
                                     <i class="fa-solid ${icon}"></i>
                                 </div>
-                                <div>
-                                    <h4 class="text-sm font-bold text-white flex items-center">${d.nome} ${badgeFixa}</h4>
-                                    <p class="text-[11px] text-slate-400 mt-0.5">${this.formatarData(d.dataExibicao)} • <span class="uppercase font-semibold">${d.categoria}</span> ${tagSub}</p>
+                                <div class="truncate">
+                                    <h4 class="text-sm font-bold text-white flex items-center truncate">${d.nome} ${badgeFixa}</h4>
+                                    <p class="text-[11px] text-slate-400 mt-0.5 truncate">${this.formatarData(d.dataExibicao)} • <span class="uppercase font-semibold">${d.categoria}</span> ${tagSub}</p>
+                                    ${badgeStatus}
                                 </div>
                             </div>
-                            <div class="flex items-center space-x-3">
+                            <div class="flex items-center space-x-3 shrink-0">
                                 <span class="text-sm font-black text-white valor-ocultavel">${this.formatarMoeda(d.valor)}</span>
                                 <div class="flex items-center space-x-1">
-                                    <button onclick="app.editar('${d.firebaseId}')" class="w-7 h-7 text-slate-400 hover:text-indigo-400 bg-slate-800 rounded-lg flex items-center justify-center transition cursor-pointer">
+                                    <button onclick="app.editar('${d.firebaseId}')" class="w-7 h-7 text-slate-400 hover:text-indigo-400 bg-slate-800 rounded-lg flex items-center justify-center transition cursor-pointer" title="Editar">
                                         <i class="fa-solid fa-pen text-[10px]"></i>
                                     </button>
-                                    <button onclick="app.excluir('${d.firebaseId}')" class="w-7 h-7 text-slate-400 hover:text-rose-400 bg-slate-800 rounded-lg flex items-center justify-center transition cursor-pointer">
+                                    <button onclick="app.excluir('${d.firebaseId}')" class="w-7 h-7 text-slate-400 hover:text-rose-400 bg-slate-800 rounded-lg flex items-center justify-center transition cursor-pointer" title="Excluir">
                                         <i class="fa-solid fa-trash text-[10px]"></i>
                                     </button>
                                 </div>
@@ -934,6 +1056,19 @@
                         listaEl.appendChild(div);
                     });
                 }
+            }
+
+            setFiltro(filtro) {
+                this.filtroAtual = filtro;
+                ['todos', 'Casa', 'Empresa'].forEach(f => {
+                    const btn = document.getElementById(`filtro-${f}`);
+                    if (f === filtro) {
+                        btn.className = "text-[11px] px-3 py-1 rounded-lg font-semibold bg-indigo-600 text-white transition cursor-pointer";
+                    } else {
+                        btn.className = "text-[11px] px-3 py-1 rounded-lg font-semibold text-slate-400 hover:text-white transition cursor-pointer";
+                    }
+                });
+                this.render();
             }
 
             mostrarModal(t, m, tipo) {
